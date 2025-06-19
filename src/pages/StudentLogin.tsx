@@ -53,12 +53,20 @@ const StudentLogin = () => {
       });
     } else {
       // Check if user is a student
-      const { data: studentData } = await supabase
+      const { data: studentData, error: studentError } = await supabase
         .from('students')
         .select('*')
-        .single();
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .maybeSingle();
       
-      if (studentData) {
+      if (studentError) {
+        console.error('Error checking student status:', studentError);
+        toast({
+          title: "Error",
+          description: "Failed to verify student status.",
+          variant: "destructive"
+        });
+      } else if (studentData) {
         toast({
           title: "Login Successful",
           description: "Welcome to the Student Dashboard!",

@@ -52,12 +52,20 @@ const TeacherLogin = () => {
       });
     } else {
       // Check if user is a teacher
-      const { data: teacherData } = await supabase
+      const { data: teacherData, error: teacherError } = await supabase
         .from('teachers')
         .select('*')
-        .single();
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .maybeSingle();
       
-      if (teacherData) {
+      if (teacherError) {
+        console.error('Error checking teacher status:', teacherError);
+        toast({
+          title: "Error",
+          description: "Failed to verify teacher status.",
+          variant: "destructive"
+        });
+      } else if (teacherData) {
         toast({
           title: "Login Successful",
           description: "Welcome to the Teacher Dashboard!",

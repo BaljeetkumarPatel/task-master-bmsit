@@ -108,25 +108,31 @@ const TeacherLogin = () => {
         variant: "destructive"
       });
     } else {
-      // Create teacher record
-      const { error: teacherError } = await supabase
-        .from('teachers')
-        .insert({
-          employee_id: signupData.employeeId,
-          department: signupData.department
-        });
+      // Get the current user's ID after signup
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Create teacher record with the user's ID
+        const { error: teacherError } = await supabase
+          .from('teachers')
+          .insert({
+            id: user.id,
+            employee_id: signupData.employeeId,
+            department: signupData.department
+          });
 
-      if (teacherError) {
-        toast({
-          title: "Signup Error",
-          description: "Failed to create teacher profile. Please contact support.",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Signup Successful",
-          description: "Please check your email to verify your account.",
-        });
+        if (teacherError) {
+          toast({
+            title: "Signup Error",
+            description: "Failed to create teacher profile. Please contact support.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Signup Successful",
+            description: "Please check your email to verify your account.",
+          });
+        }
       }
     }
     setIsLoading(false);

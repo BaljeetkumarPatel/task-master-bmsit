@@ -109,26 +109,32 @@ const StudentLogin = () => {
         variant: "destructive"
       });
     } else {
-      // Create student record
-      const { error: studentError } = await supabase
-        .from('students')
-        .insert({
-          usn: signupData.usn.toUpperCase(),
-          semester: parseInt(signupData.semester),
-          department: signupData.department
-        });
+      // Get the current user's ID after signup
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Create student record with the user's ID
+        const { error: studentError } = await supabase
+          .from('students')
+          .insert({
+            id: user.id,
+            usn: signupData.usn.toUpperCase(),
+            semester: parseInt(signupData.semester),
+            department: signupData.department
+          });
 
-      if (studentError) {
-        toast({
-          title: "Signup Error",
-          description: "Failed to create student profile. Please contact support.",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Signup Successful",
-          description: "Please check your email to verify your account.",
-        });
+        if (studentError) {
+          toast({
+            title: "Signup Error",
+            description: "Failed to create student profile. Please contact support.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Signup Successful",
+            description: "Please check your email to verify your account.",
+          });
+        }
       }
     }
     setIsLoading(false);

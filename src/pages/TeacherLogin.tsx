@@ -6,34 +6,130 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GraduationCap, Eye, EyeOff } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const TeacherLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
+  const [isLoading, setIsLoading] = useState(false);
+  const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [signupData, setSignupData] = useState({
     email: "",
-    password: ""
+    password: "",
+    confirmPassword: "",
+    firstName: "",
+    lastName: "",
+    employeeId: "",
+    department: ""
   });
+  
   const navigate = useNavigate();
+  const { signIn, signUp } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock authentication
-    if (formData.email && formData.password) {
-      toast({
-        title: "Login Successful",
-        description: "Welcome to the Teacher Dashboard!",
-      });
-      navigate('/teacher-dashboard');
-    } else {
+    if (!loginData.email || !loginData.password) {
       toast({
         title: "Login Failed",
         description: "Please enter valid credentials.",
         variant: "destructive"
       });
+      return;
     }
+
+    setIsLoading(true);
+    const { error } = await signIn(loginData.email, loginData.password);
+    
+    if (error) {
+      toast({
+        title: "Login Failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      // Check if user is a teacher
+      const { data: teacherData } = await supabase
+        .from('teachers')
+        .select('*')
+        .single();
+      
+      if (teacherData) {
+        toast({
+          title: "Login Successful",
+          description: "Welcome to the Teacher Dashboard!",
+        });
+        navigate('/teacher-dashboard');
+      } else {
+        toast({
+          title: "Access Denied",
+          description: "You are not registered as a teacher.",
+          variant: "destructive"
+        });
+      }
+    }
+    setIsLoading(false);
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (signupData.password !== signupData.confirmPassword) {
+      toast({
+        title: "Signup Failed",
+        description: "Passwords do not match.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!signupData.email || !signupData.password || !signupData.firstName || !signupData.lastName || !signupData.employeeId || !signupData.department) {
+      toast({
+        title: "Signup Failed",
+        description: "Please fill in all fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    const { error } = await signUp(signupData.email, signupData.password, {
+      first_name: signupData.firstName,
+      last_name: signupData.lastName
+    });
+
+    if (error) {
+      toast({
+        title: "Signup Failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      // Create teacher record
+      const { error: teacherError } = await supabase
+        .from('teachers')
+        .insert({
+          employee_id: signupData.employeeId,
+          department: signupData.department
+        });
+
+      if (teacherError) {
+        toast({
+          title: "Signup Error",
+          description: "Failed to create teacher profile. Please contact support.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Signup Successful",
+          description: "Please check your email to verify your account.",
+        });
+      }
+    }
+    setIsLoading(false);
   };
 
   return (
@@ -47,59 +143,163 @@ const TeacherLogin = () => {
               <GraduationCap className="w-8 h-8 text-white" />
             </div>
             <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Teacher Login
+              Teacher Portal
             </CardTitle>
             <CardDescription>
-              Access your teacher dashboard to manage assignments and grades
+              Sign in to your account or create a new teacher account
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="teacher@bmsit.in"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  required
-                />
-              </div>
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Login</TabsTrigger>
+                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              </TabsList>
               
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={formData.password}
-                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
-                </div>
-              </div>
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="teacher@bmsit.in"
+                      value={loginData.email}
+                      onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={loginData.password}
+                        onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
 
-              <Button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
-                Login to Dashboard
-              </Button>
-            </form>
-            
-            <div className="mt-6 text-center">
-              <a href="#" className="text-sm text-blue-600 hover:underline">
-                Forgot your password?
-              </a>
-            </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Signing In..." : "Login to Dashboard"}
+                  </Button>
+                </form>
+              </TabsContent>
+              
+              <TabsContent value="signup">
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        type="text"
+                        placeholder="John"
+                        value={signupData.firstName}
+                        onChange={(e) => setSignupData(prev => ({ ...prev, firstName: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        type="text"
+                        placeholder="Doe"
+                        value={signupData.lastName}
+                        onChange={(e) => setSignupData(prev => ({ ...prev, lastName: e.target.value }))}
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signupEmail">Email Address</Label>
+                    <Input
+                      id="signupEmail"
+                      type="email"
+                      placeholder="teacher@bmsit.in"
+                      value={signupData.email}
+                      onChange={(e) => setSignupData(prev => ({ ...prev, email: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="employeeId">Employee ID</Label>
+                    <Input
+                      id="employeeId"
+                      type="text"
+                      placeholder="EMP001"
+                      value={signupData.employeeId}
+                      onChange={(e) => setSignupData(prev => ({ ...prev, employeeId: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Department</Label>
+                    <Input
+                      id="department"
+                      type="text"
+                      placeholder="Computer Science"
+                      value={signupData.department}
+                      onChange={(e) => setSignupData(prev => ({ ...prev, department: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signupPassword">Password</Label>
+                    <Input
+                      id="signupPassword"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={signupData.password}
+                      onChange={(e) => setSignupData(prev => ({ ...prev, password: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="Confirm your password"
+                      value={signupData.confirmPassword}
+                      onChange={(e) => setSignupData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Creating Account..." : "Create Teacher Account"}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </main>

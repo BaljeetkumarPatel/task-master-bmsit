@@ -42,42 +42,56 @@ const TeacherLogin = () => {
     }
 
     setIsLoading(true);
-    const { error } = await signIn(loginData.email, loginData.password);
-    
-    if (error) {
+    try {
+      const { error } = await signIn(loginData.email, loginData.password);
+      
+      if (error) {
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if user is a teacher
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: teacherData, error: teacherError } = await supabase
+          .from('teachers')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (teacherError) {
+          console.error('Error checking teacher status:', teacherError);
+          toast({
+            title: "Error",
+            description: "Failed to verify teacher status.",
+            variant: "destructive"
+          });
+        } else if (teacherData) {
+          toast({
+            title: "Login Successful",
+            description: "Welcome to the Teacher Dashboard!",
+          });
+          navigate('/teacher-dashboard');
+        } else {
+          toast({
+            title: "Access Denied",
+            description: "You are not registered as a teacher.",
+            variant: "destructive"
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Login error:', error);
       toast({
         title: "Login Failed",
-        description: error.message,
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
-    } else {
-      // Check if user is a teacher
-      const { data: teacherData, error: teacherError } = await supabase
-        .from('teachers')
-        .select('*')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
-        .maybeSingle();
-      
-      if (teacherError) {
-        console.error('Error checking teacher status:', teacherError);
-        toast({
-          title: "Error",
-          description: "Failed to verify teacher status.",
-          variant: "destructive"
-        });
-      } else if (teacherData) {
-        toast({
-          title: "Login Successful",
-          description: "Welcome to the Teacher Dashboard!",
-        });
-        navigate('/teacher-dashboard');
-      } else {
-        toast({
-          title: "Access Denied",
-          description: "You are not registered as a teacher.",
-          variant: "destructive"
-        });
-      }
     }
     setIsLoading(false);
   };
@@ -104,32 +118,35 @@ const TeacherLogin = () => {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(signupData.email, signupData.password, {
-      first_name: signupData.firstName,
-      last_name: signupData.lastName
-    });
-
-    if (error) {
-      toast({
-        title: "Signup Failed",
-        description: error.message,
-        variant: "destructive"
+    try {
+      const { data, error } = await signUp(signupData.email, signupData.password, {
+        first_name: signupData.firstName,
+        last_name: signupData.lastName
       });
-    } else {
-      // Get the current user's ID after signup
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
+
+      if (error) {
+        toast({
+          title: "Signup Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if we have a user from the signup response
+      if (data.user) {
         // Create teacher record with the user's ID
         const { error: teacherError } = await supabase
           .from('teachers')
           .insert({
-            id: user.id,
+            id: data.user.id,
             employee_id: signupData.employeeId,
             department: signupData.department
           });
 
         if (teacherError) {
+          console.error('Teacher creation error:', teacherError);
           toast({
             title: "Signup Error",
             description: "Failed to create teacher profile. Please contact support.",
@@ -138,10 +155,33 @@ const TeacherLogin = () => {
         } else {
           toast({
             title: "Signup Successful",
-            description: "Please check your email to verify your account.",
+            description: "Account created successfully! Please check your email to verify your account.",
+          });
+          // Clear the form
+          setSignupData({
+            email: "",
+            password: "",
+            confirmPassword: "",
+            firstName: "",
+            lastName: "",
+            employeeId: "",
+            department: ""
           });
         }
+      } else {
+        toast({
+          title: "Signup Error",
+          description: "Failed to create user account. Please try again.",
+          variant: "destructive"
+        });
       }
+    } catch (error) {
+      console.error('Signup error:', error);
+      toast({
+        title: "Signup Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
     }
     setIsLoading(false);
   };

@@ -43,42 +43,56 @@ const StudentLogin = () => {
     }
 
     setIsLoading(true);
-    const { error } = await signIn(loginData.email, loginData.password);
-    
-    if (error) {
+    try {
+      const { error } = await signIn(loginData.email, loginData.password);
+      
+      if (error) {
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if user is a student
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: studentData, error: studentError } = await supabase
+          .from('students')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (studentError) {
+          console.error('Error checking student status:', studentError);
+          toast({
+            title: "Error",
+            description: "Failed to verify student status.",
+            variant: "destructive"
+          });
+        } else if (studentData) {
+          toast({
+            title: "Login Successful",
+            description: "Welcome to the Student Dashboard!",
+          });
+          navigate('/student-dashboard');
+        } else {
+          toast({
+            title: "Access Denied",
+            description: "You are not registered as a student.",
+            variant: "destructive"
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Login error:', error);
       toast({
         title: "Login Failed",
-        description: error.message,
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
-    } else {
-      // Check if user is a student
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('*')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
-        .maybeSingle();
-      
-      if (studentError) {
-        console.error('Error checking student status:', studentError);
-        toast({
-          title: "Error",
-          description: "Failed to verify student status.",
-          variant: "destructive"
-        });
-      } else if (studentData) {
-        toast({
-          title: "Login Successful",
-          description: "Welcome to the Student Dashboard!",
-        });
-        navigate('/student-dashboard');
-      } else {
-        toast({
-          title: "Access Denied",
-          description: "You are not registered as a student.",
-          variant: "destructive"
-        });
-      }
     }
     setIsLoading(false);
   };
@@ -105,33 +119,36 @@ const StudentLogin = () => {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(signupData.email, signupData.password, {
-      first_name: signupData.firstName,
-      last_name: signupData.lastName
-    });
-
-    if (error) {
-      toast({
-        title: "Signup Failed",
-        description: error.message,
-        variant: "destructive"
+    try {
+      const { data, error } = await signUp(signupData.email, signupData.password, {
+        first_name: signupData.firstName,
+        last_name: signupData.lastName
       });
-    } else {
-      // Get the current user's ID after signup
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
+
+      if (error) {
+        toast({
+          title: "Signup Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if we have a user from the signup response
+      if (data.user) {
         // Create student record with the user's ID
         const { error: studentError } = await supabase
           .from('students')
           .insert({
-            id: user.id,
+            id: data.user.id,
             usn: signupData.usn.toUpperCase(),
             semester: parseInt(signupData.semester),
             department: signupData.department
           });
 
         if (studentError) {
+          console.error('Student creation error:', studentError);
           toast({
             title: "Signup Error",
             description: "Failed to create student profile. Please contact support.",
@@ -140,10 +157,34 @@ const StudentLogin = () => {
         } else {
           toast({
             title: "Signup Successful",
-            description: "Please check your email to verify your account.",
+            description: "Account created successfully! Please check your email to verify your account.",
+          });
+          // Clear the form
+          setSignupData({
+            email: "",
+            password: "",
+            confirmPassword: "",
+            firstName: "",
+            lastName: "",
+            usn: "",
+            semester: "",
+            department: ""
           });
         }
+      } else {
+        toast({
+          title: "Signup Error",
+          description: "Failed to create user account. Please try again.",
+          variant: "destructive"
+        });
       }
+    } catch (error) {
+      console.error('Signup error:', error);
+      toast({
+        title: "Signup Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
     }
     setIsLoading(false);
   };

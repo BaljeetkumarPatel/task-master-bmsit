@@ -11,31 +11,43 @@ export type Database = {
     Tables: {
       assignments: {
         Row: {
+          attachment_url: string | null
           created_at: string
           description: string | null
           due_date: string
           id: string
-          max_marks: number | null
+          instructions: string | null
+          is_published: boolean | null
+          max_marks: number
+          subject: string
           teacher_id: string
           title: string
           updated_at: string
         }
         Insert: {
+          attachment_url?: string | null
           created_at?: string
           description?: string | null
           due_date: string
           id?: string
-          max_marks?: number | null
+          instructions?: string | null
+          is_published?: boolean | null
+          max_marks?: number
+          subject: string
           teacher_id: string
           title: string
           updated_at?: string
         }
         Update: {
+          attachment_url?: string | null
           created_at?: string
           description?: string | null
           due_date?: string
           id?: string
-          max_marks?: number | null
+          instructions?: string | null
+          is_published?: boolean | null
+          max_marks?: number
+          subject?: string
           teacher_id?: string
           title?: string
           updated_at?: string
@@ -52,6 +64,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           email: string
           first_name: string
@@ -60,6 +73,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           email: string
           first_name: string
@@ -68,6 +82,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           email?: string
           first_name?: string
@@ -82,24 +97,41 @@ export type Database = {
           created_at: string
           department: string
           id: string
+          is_active: boolean | null
+          phone: string | null
           semester: number
           usn: string
+          year_of_admission: number
         }
         Insert: {
           created_at?: string
           department: string
           id: string
+          is_active?: boolean | null
+          phone?: string | null
           semester: number
           usn: string
+          year_of_admission: number
         }
         Update: {
           created_at?: string
           department?: string
           id?: string
+          is_active?: boolean | null
+          phone?: string | null
           semester?: number
           usn?: string
+          year_of_admission?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "students_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       submissions: {
         Row: {
@@ -107,8 +139,10 @@ export type Database = {
           feedback: string | null
           file_url: string | null
           graded_at: string | null
+          graded_by: string | null
           id: string
           marks: number | null
+          status: string | null
           student_id: string
           submission_text: string | null
           submitted_at: string
@@ -118,8 +152,10 @@ export type Database = {
           feedback?: string | null
           file_url?: string | null
           graded_at?: string | null
+          graded_by?: string | null
           id?: string
           marks?: number | null
+          status?: string | null
           student_id: string
           submission_text?: string | null
           submitted_at?: string
@@ -129,8 +165,10 @@ export type Database = {
           feedback?: string | null
           file_url?: string | null
           graded_at?: string | null
+          graded_by?: string | null
           id?: string
           marks?: number | null
+          status?: string | null
           student_id?: string
           submission_text?: string | null
           submitted_at?: string
@@ -141,6 +179,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_graded_by_fkey"
+            columns: ["graded_by"]
+            isOneToOne: false
+            referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
           {
@@ -158,27 +203,47 @@ export type Database = {
           department: string
           employee_id: string
           id: string
+          is_active: boolean | null
+          phone: string | null
+          specialization: string | null
         }
         Insert: {
           created_at?: string
           department: string
           employee_id: string
           id: string
+          is_active?: boolean | null
+          phone?: string | null
+          specialization?: string | null
         }
         Update: {
           created_at?: string
           department?: string
           employee_id?: string
           id?: string
+          is_active?: boolean | null
+          phone?: string | null
+          specialization?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "teachers_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_type: {
+        Args: { user_id: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

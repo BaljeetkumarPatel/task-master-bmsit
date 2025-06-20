@@ -24,7 +24,8 @@ const TeacherLogin = () => {
     firstName: "",
     lastName: "",
     employeeId: "",
-    department: ""
+    department: "",
+    specialization: ""
   });
   
   const navigate = useNavigate();
@@ -111,7 +112,7 @@ const TeacherLogin = () => {
     if (!signupData.email || !signupData.password || !signupData.firstName || !signupData.lastName || !signupData.employeeId || !signupData.department) {
       toast({
         title: "Signup Failed",
-        description: "Please fill in all fields.",
+        description: "Please fill in all required fields.",
         variant: "destructive"
       });
       return;
@@ -142,7 +143,8 @@ const TeacherLogin = () => {
           .insert({
             id: data.user.id,
             employee_id: signupData.employeeId,
-            department: signupData.department
+            department: signupData.department,
+            specialization: signupData.specialization || null
           });
 
         if (teacherError) {
@@ -165,7 +167,8 @@ const TeacherLogin = () => {
             firstName: "",
             lastName: "",
             employeeId: "",
-            department: ""
+            department: "",
+            specialization: ""
           });
         }
       } else {
@@ -317,6 +320,17 @@ const TeacherLogin = () => {
                       value={signupData.department}
                       onChange={(e) => setSignupData(prev => ({ ...prev, department: e.target.value }))}
                       required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="specialization">Specialization (Optional)</Label>
+                    <Input
+                      id="specialization"
+                      type="text"
+                      placeholder="Machine Learning"
+                      value={signupData.specialization}
+                      onChange={(e) => setSignupData(prev => ({ ...prev, specialization: e.target.value }))}
                     />
                   </div>
                   

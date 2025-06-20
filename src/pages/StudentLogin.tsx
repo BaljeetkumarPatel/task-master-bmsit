@@ -25,7 +25,8 @@ const StudentLogin = () => {
     lastName: "",
     usn: "",
     semester: "",
-    department: ""
+    department: "",
+    yearOfAdmission: ""
   });
   
   const navigate = useNavigate();
@@ -109,10 +110,32 @@ const StudentLogin = () => {
       return;
     }
 
-    if (!signupData.email || !signupData.password || !signupData.firstName || !signupData.lastName || !signupData.usn || !signupData.semester || !signupData.department) {
+    if (!signupData.email || !signupData.password || !signupData.firstName || !signupData.lastName || !signupData.usn || !signupData.semester || !signupData.department || !signupData.yearOfAdmission) {
       toast({
         title: "Signup Failed",
-        description: "Please fill in all fields.",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const semesterNum = parseInt(signupData.semester);
+    const yearNum = parseInt(signupData.yearOfAdmission);
+    
+    if (semesterNum < 1 || semesterNum > 8) {
+      toast({
+        title: "Signup Failed",
+        description: "Semester must be between 1 and 8.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const currentYear = new Date().getFullYear();
+    if (yearNum < 2000 || yearNum > currentYear + 1) {
+      toast({
+        title: "Signup Failed",
+        description: "Please enter a valid year of admission.",
         variant: "destructive"
       });
       return;
@@ -143,8 +166,9 @@ const StudentLogin = () => {
           .insert({
             id: data.user.id,
             usn: signupData.usn.toUpperCase(),
-            semester: parseInt(signupData.semester),
-            department: signupData.department
+            semester: semesterNum,
+            department: signupData.department,
+            year_of_admission: yearNum
           });
 
         if (studentError) {
@@ -168,7 +192,8 @@ const StudentLogin = () => {
             lastName: "",
             usn: "",
             semester: "",
-            department: ""
+            department: "",
+            yearOfAdmission: ""
           });
         }
       } else {
@@ -326,16 +351,30 @@ const StudentLogin = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="department">Department</Label>
+                      <Label htmlFor="yearOfAdmission">Year of Admission</Label>
                       <Input
-                        id="department"
-                        type="text"
-                        placeholder="Computer Science"
-                        value={signupData.department}
-                        onChange={(e) => setSignupData(prev => ({ ...prev, department: e.target.value }))}
+                        id="yearOfAdmission"
+                        type="number"
+                        placeholder="2024"
+                        min="2000"
+                        max={new Date().getFullYear() + 1}
+                        value={signupData.yearOfAdmission}
+                        onChange={(e) => setSignupData(prev => ({ ...prev, yearOfAdmission: e.target.value }))}
                         required
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Department</Label>
+                    <Input
+                      id="department"
+                      type="text"
+                      placeholder="Computer Science"
+                      value={signupData.department}
+                      onChange={(e) => setSignupData(prev => ({ ...prev, department: e.target.value }))}
+                      required
+                    />
                   </div>
                   
                   <div className="space-y-2">

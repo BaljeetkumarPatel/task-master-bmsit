@@ -34,6 +34,8 @@ const StudentLogin = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Student login attempt started');
+    
     if (!loginData.email || !loginData.password) {
       toast({
         title: "Login Failed",
@@ -45,9 +47,11 @@ const StudentLogin = () => {
 
     setIsLoading(true);
     try {
+      console.log('Calling signIn...');
       const { error } = await signIn(loginData.email, loginData.password);
       
       if (error) {
+        console.error('Login error:', error);
         toast({
           title: "Login Failed",
           description: error.message,
@@ -57,38 +61,49 @@ const StudentLogin = () => {
         return;
       }
 
+      console.log('Login successful, checking student status...');
+      
+      // Wait a moment for the session to be established
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       // Check if user is a student
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        console.log('User authenticated:', user.id);
+        
         const { data: studentData, error: studentError } = await supabase
           .from('students')
           .select('*')
           .eq('id', user.id)
           .maybeSingle();
         
+        console.log('Student check result:', { studentData, studentError });
+        
         if (studentError) {
           console.error('Error checking student status:', studentError);
           toast({
             title: "Error",
-            description: "Failed to verify student status.",
+            description: "Failed to verify student status. Please try again.",
             variant: "destructive"
           });
         } else if (studentData) {
+          console.log('Student verified, redirecting to dashboard');
           toast({
             title: "Login Successful",
             description: "Welcome to the Student Dashboard!",
           });
           navigate('/student-dashboard');
         } else {
+          console.log('User is not a student');
           toast({
             title: "Access Denied",
-            description: "You are not registered as a student.",
+            description: "You are not registered as a student. Please sign up first.",
             variant: "destructive"
           });
         }
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login process error:', error);
       toast({
         title: "Login Failed",
         description: "An unexpected error occurred. Please try again.",
@@ -100,6 +115,7 @@ const StudentLogin = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Student signup attempt started');
     
     if (signupData.password !== signupData.confirmPassword) {
       toast({
@@ -143,12 +159,17 @@ const StudentLogin = () => {
 
     setIsLoading(true);
     try {
+      console.log('Calling signUp for student...');
+      
       const { data, error } = await signUp(signupData.email, signupData.password, {
         first_name: signupData.firstName,
         last_name: signupData.lastName
       });
 
+      console.log('Signup response:', { data, error });
+
       if (error) {
+        console.error('Signup error:', error);
         toast({
           title: "Signup Failed",
           description: error.message,
@@ -159,7 +180,12 @@ const StudentLogin = () => {
       }
 
       // Check if we have a user from the signup response
-      if (data.user) {
+      if (data?.user) {
+        console.log('User created, creating student record...', data.user.id);
+        
+        // Wait a moment for the profile to be created by the trigger
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
         // Create student record with the user's ID
         const { error: studentError } = await supabase
           .from('students')
@@ -171,17 +197,20 @@ const StudentLogin = () => {
             year_of_admission: yearNum
           });
 
+        console.log('Student creation result:', { studentError });
+
         if (studentError) {
           console.error('Student creation error:', studentError);
           toast({
             title: "Signup Error",
-            description: "Failed to create student profile. Please contact support.",
+            description: `Failed to create student profile: ${studentError.message}`,
             variant: "destructive"
           });
         } else {
+          console.log('Student signup successful');
           toast({
             title: "Signup Successful",
-            description: "Account created successfully! Please check your email to verify your account.",
+            description: "Student account created successfully! Please check your email to verify your account before logging in.",
           });
           // Clear the form
           setSignupData({
@@ -197,6 +226,7 @@ const StudentLogin = () => {
           });
         }
       } else {
+        console.error('No user in signup response');
         toast({
           title: "Signup Error",
           description: "Failed to create user account. Please try again.",
@@ -204,7 +234,7 @@ const StudentLogin = () => {
         });
       }
     } catch (error) {
-      console.error('Signup error:', error);
+      console.error('Signup process error:', error);
       toast({
         title: "Signup Failed",
         description: "An unexpected error occurred. Please try again.",

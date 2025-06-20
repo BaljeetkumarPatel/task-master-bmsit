@@ -88,102 +88,52 @@ ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.submissions ENABLE ROW LEVEL SECURITY;
 
--- Profiles policies
-CREATE POLICY "Users can view their own profile" 
+-- Profiles policies - Allow users to manage their own profiles
+CREATE POLICY "Enable all operations for users on their own profile" 
   ON public.profiles 
-  FOR SELECT 
-  USING (auth.uid() = id);
-
-CREATE POLICY "Users can update their own profile" 
-  ON public.profiles 
-  FOR UPDATE 
-  USING (auth.uid() = id);
-
-CREATE POLICY "Users can insert their own profile" 
-  ON public.profiles 
-  FOR INSERT 
+  FOR ALL
+  USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
--- Teachers policies
-CREATE POLICY "Teachers can view their own data" 
+-- Teachers policies - Allow teachers to manage their own data
+CREATE POLICY "Enable all operations for teachers on their own data" 
   ON public.teachers 
-  FOR SELECT 
-  USING (auth.uid() = id);
-
-CREATE POLICY "Teachers can update their own data" 
-  ON public.teachers 
-  FOR UPDATE 
-  USING (auth.uid() = id);
-
-CREATE POLICY "Teachers can insert their own data" 
-  ON public.teachers 
-  FOR INSERT 
+  FOR ALL
+  USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
--- Students policies
-CREATE POLICY "Students can view their own data" 
+-- Students policies - Allow students to manage their own data
+CREATE POLICY "Enable all operations for students on their own data" 
   ON public.students 
-  FOR SELECT 
-  USING (auth.uid() = id);
-
-CREATE POLICY "Students can update their own data" 
-  ON public.students 
-  FOR UPDATE 
-  USING (auth.uid() = id);
-
-CREATE POLICY "Students can insert their own data" 
-  ON public.students 
-  FOR INSERT 
+  FOR ALL
+  USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
 -- Assignments policies
 CREATE POLICY "Teachers can manage their own assignments" 
   ON public.assignments 
   FOR ALL 
-  USING (
-    auth.uid() IN (
-      SELECT id FROM public.teachers WHERE id = auth.uid()
-    ) AND teacher_id = auth.uid()
-  );
+  USING (auth.uid() = teacher_id)
+  WITH CHECK (auth.uid() = teacher_id);
 
 CREATE POLICY "Students can view published assignments" 
   ON public.assignments 
   FOR SELECT 
-  USING (
-    auth.uid() IN (
-      SELECT id FROM public.students WHERE id = auth.uid()
-    ) AND is_published = true
-  );
+  USING (is_published = true);
 
 -- Submissions policies
 CREATE POLICY "Students can manage their own submissions" 
   ON public.submissions 
   FOR ALL 
-  USING (
-    auth.uid() IN (
-      SELECT id FROM public.students WHERE id = auth.uid()
-    ) AND student_id = auth.uid()
-  );
+  USING (auth.uid() = student_id)
+  WITH CHECK (auth.uid() = student_id);
 
-CREATE POLICY "Teachers can view submissions for their assignments" 
+CREATE POLICY "Teachers can view and grade submissions for their assignments" 
   ON public.submissions 
-  FOR SELECT 
+  FOR ALL
   USING (
     auth.uid() IN (
-      SELECT t.id FROM public.teachers t 
-      JOIN public.assignments a ON a.teacher_id = t.id 
-      WHERE a.id = assignment_id AND t.id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Teachers can grade submissions for their assignments" 
-  ON public.submissions 
-  FOR UPDATE 
-  USING (
-    auth.uid() IN (
-      SELECT t.id FROM public.teachers t 
-      JOIN public.assignments a ON a.teacher_id = t.id 
-      WHERE a.id = assignment_id AND t.id = auth.uid()
+      SELECT teacher_id FROM public.assignments WHERE id = assignment_id
     )
   );
 
@@ -204,7 +154,6 @@ BEGIN
   RETURN new;
 EXCEPTION
   WHEN others THEN
-    -- Log error but don't block user creation
     RAISE WARNING 'Error creating profile for user %: %', new.id, SQLERRM;
     RETURN new;
 END;
